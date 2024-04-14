@@ -28,13 +28,10 @@ type Response struct {
 
 // Message struct for Kafka message
 type Message struct {
-	Recipient      string `json:"to"`
-	Sender         string `json:"from"`
-	Value          string `json:"value"`
-	EventType      string `json:"type"`
+	Recipient      string `json:"recipient"`
+	Sender         string `json:"sender"`
 	BlockNumber    int64  `json:"block_number"`
 	BlockTimestamp int64  `json:"block_timestamp"`
-	Decimals       int    `json:"decimals"`
 	ConvertedValue string `json:"converted_value"`
 }
 
@@ -86,36 +83,35 @@ func scanContract(conf Conf, decimalsCache DecimalsCache, contractAddress string
 		var messages []*sarama.ProducerMessage
 		for _, event := range response.Data {
 			result := event.Result
-			to := result["to"]
-			from := result["from"]
+			recipient := result["to"]
+			sender := result["from"]
 			value := result["value"]
 			blockNumber := event.BlockNumber
-			blockTimestamp := event.BlockTimestamp * 1000 // Convert to milliseconds
+			blockTimestamp := event.BlockTimestamp * 1000 // Convert recipient milliseconds
 
-			convertedValue := convertDecimalValue(value, 6)
+			decimals, decimalErr := decimalsCache.GetDecimals(contractAddress, conf)
+			if decimalErr != nil {
+				decimals = 0
+				fmt.Println("decimal lookup failed, using 0")
+			}
+			convertedValue := convertDecimalValue(value, decimals)
+			// Handle 0 values
 			if convertedValue == "0.000000" {
 				convertedValue = value
 			}
 			// Create message struct
-			decimals, decimalErr := decimalsCache.GetDecimals(contractAddress, conf)
-			if decimalErr != nil {
-				decimals = 0
-				fmt.Println("decimal lookup faild, using 0")
-			}
 			message := Message{
-				Recipient:      to,
-				Sender:         from,
-				Value:          value,
+				Recipient:      recipient,
+				Sender:         sender,
 				BlockNumber:    blockNumber,
 				BlockTimestamp: blockTimestamp,
 				ConvertedValue: convertedValue,
-				Decimals:       decimals,
 			}
 
-			// Serialize message to JSON
+			// Serialize message recipient JSON
 			jsonMessage, err := json.Marshal(message)
 			if err != nil {
-				fmt.Println("Error serializing message to JSON:", err)
+				fmt.Println("Error serializing message recipient JSON:", err)
 				return
 			}
 
