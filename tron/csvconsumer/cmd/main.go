@@ -4,27 +4,26 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"github.com/IBM/sarama"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/IBM/sarama"
 )
 
 const (
-	topic            = "tron.tether.edges0"
-	csvBatchSize     = 1000000
-	csvFilePrefix    = "edges"
-	timeFormatLayout = "2006-01-02T15:04:05.000Z"
-	targetCSVNumber  = 10000
+	topic           = "tron.tether.edges0"
+	csvBatchSize    = 1000000
+	csvFilePrefix   = "edges"
+	targetCSVNumber = 10000
 )
 
 type GraphEdge struct {
-	ToAddress      string
-	FromAddress    string
-	Value          string
-	BlockTimestamp time.Time
+	Recipient      string
+	Sender         string
+	ConvertedValue string
+	BlockTimestamp string
+	BlockNumber    string
+	EventType      string
 }
 
 func main() {
@@ -114,15 +113,17 @@ func createCSVFile(number int) (*csv.Writer, error) {
 	}
 
 	writer := csv.NewWriter(file)
-	writer.Write([]string{"ToAddress", "FromAddress", "Value", "BlockTimestamp"})
+	writer.Write([]string{"Recipient", "Sender", "ConvertedValue", "BlockTimestamp", "BlockNumber", "EventType"})
 	return writer, nil
 }
 
 func writeEdgeToCSV(edge GraphEdge, writer *csv.Writer) {
 	writer.Write([]string{
-		edge.ToAddress,
-		edge.FromAddress,
-		edge.Value,
-		edge.BlockTimestamp.Format(timeFormatLayout),
+		edge.Recipient,
+		edge.Sender,
+		edge.ConvertedValue,
+		edge.BlockTimestamp,
+		edge.BlockNumber,
+		edge.EventType,
 	})
 }
