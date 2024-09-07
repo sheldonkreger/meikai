@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,11 +29,12 @@ type Response struct {
 
 // Message struct for Kafka message
 type Message struct {
-	Recipient      string `json:"recipient"`
-	Sender         string `json:"sender"`
-	BlockNumber    int64  `json:"block_number"`
-	BlockTimestamp int64  `json:"block_timestamp"`
-	ConvertedValue string `json:"converted_value"`
+	Recipient       string  `json:"recipient"`
+	Sender          string  `json:"sender"`
+	BlockNumber     int64   `json:"block_number"`
+	BlockTimestamp  int64   `json:"block_timestamp"`
+	ConvertedValue  float64 `json:"converted_value"`
+	ContractAddress string  `json:"contract_address"`
 }
 
 func main() {
@@ -96,16 +98,17 @@ func scanContract(conf Conf, decimalsCache DecimalsCache, contractAddress string
 			}
 			convertedValue := convertDecimalValue(value, decimals)
 			// Handle 0 values
-			if convertedValue == "0.000000" {
-				convertedValue = value
-			}
+			//if convertedValue == 0.000000 {
+			//	convertedValue = value
+			//}
 			// Create message struct
 			message := Message{
-				Recipient:      recipient,
-				Sender:         sender,
-				BlockNumber:    blockNumber,
-				BlockTimestamp: blockTimestamp,
-				ConvertedValue: convertedValue,
+				Recipient:       recipient,
+				Sender:          sender,
+				BlockNumber:     blockNumber,
+				BlockTimestamp:  blockTimestamp,
+				ConvertedValue:  convertedValue,
+				ContractAddress: contractAddress,
 			}
 
 			// Serialize message recipient JSON
@@ -133,7 +136,7 @@ func scanContract(conf Conf, decimalsCache DecimalsCache, contractAddress string
 	}
 }
 
-func convertDecimalValue(value string, decimals int) string {
+func convertDecimalValue(value string, decimals int) float64 {
 	// Pad the value with zeros to match the required length
 
 	if len(value) < decimals {
@@ -156,7 +159,12 @@ func convertDecimalValue(value string, decimals int) string {
 
 	// Insert the decimal point at the appropriate position
 	result := value[:len(value)-decimals] + "." + value[len(value)-decimals:]
-	return result
+	floatValue, err := strconv.ParseFloat(result, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return 0
+	}
+	return floatValue
 }
 
 func initKafkaProducer() (sarama.SyncProducer, error) {
