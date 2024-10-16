@@ -76,14 +76,11 @@ func main() {
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
-			// Parse the JSON payload
 			var kafkaMsg KafkaMessage
 			if err := json.Unmarshal(msg.Value, &kafkaMsg); err != nil {
 				log.Printf("Error unmarshaling Kafka message: %v", err)
 				continue
 			}
-
-			// Insert data into Neo4j
 			err := insertDataIntoNeo4j(neo4jDriver, kafkaMsg)
 			if err != nil {
 				log.Println(err.Error())
